@@ -1,0 +1,11 @@
+{
+  "name": "stockApp",
+  "version": "0.1.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "request": "^2.81.0"
+  }
+}

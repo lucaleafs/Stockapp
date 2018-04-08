@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- script used for charting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.min.js"></script>
+    <meta charset="UTF-8">
+    <title>Stock Monitor</title>
+  </head>
+  <style>
+    body
+    {
+      background-color: black;
+      color: white;
+    }
+  </style>
+  <body>
+    <h1>Stock Monitor</h1>
+    <h3>Enter Stock symbol to look up in the NASDAQ exchange</h3>
+    <input type="text" id="stockSymbol">
+    <button onclick="submit();" href="javascript:;">Submit</button>
+    <div class = "stocks" id ="stocks"></div>
+    <script>
+
+     // Requests allows the access of urls to bring data into the app 
+     var request = require('request');   
+     
+
+      // Once the user clicks submit we grab the value submited convert it to string 
+      // and then uppercase this value to fit the api call pattern
+      function submit(){
+          var stocksymbol = document.getElementById('stockSymbol');
+          stocksymbol = stocksymbol.value.toString().toUpperCase();
+          
+          // This funciton makes the api request
+          lookUp(stocksymbol);
+
+      }
+
+       // This funciton makes the api request and parses the data
+      function lookUp(stocksymbol)
+      {
+
+        var apiLink = "https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=";
+        var apiKey = "&apikey=SJFJZI6089ESW2CN";
+       
+        // Concatenating to make the full api link for the request 
+        var res = apiLink.concat(stocksymbol).concat(apiKey);
+        
+        request(res, function(error, response, body){
+
+
+          if(error)
+          {
+            alert("Stock API servers are down or your internet connection please try again later.");
+          }
+
+          //convert the text to Json
+          var data = JSON.parse(body);
+
+          // In the case the user Enters a stock not on the exchange
+          if(data["Error Message"])
+          {
+            alert("Stock not found please re-enter a stock listed on the NASDAQ");
+          }  
+          else
+          {
+
+            // To get the most recent price we are gonna need the most recent date to get there
+            // and we can get that from the first object in the Json file 
+            var latestdate = data["Meta Data"]["3. Last Refreshed"];
+            var price = data["Time Series (Daily)"][latestdate]["4. close"];       
+            var dates = [];
+            var closePrices = [];
+           
+            // Api will only provide the 20 last most recent dates and data needs to be stored
+            // in reverse order for the chart
+            var i = 20;
+            
+            // Going through all of the date objecs and grabbing the date and close price values
+            // for the chart
+            for (x in data["Time Series (Daily)"])
+            {
+              dates[i] = x; 
+              closePrices[i] = data["Time Series (Daily)"][x]["4. close"];
+              i--;
+            }
+
+            addToStocks(stocksymbol, price,dates, closePrices);
+          }
+
+        });
+      }
+
+      // Adds the stock to the stock list and creates the chart
+      function addToStocks(stocksymbol, stockValue, dates, closePrices)
+      {
+        // Grabs the div that will hold all of the stocks
+        var masterNode = document.getElementById('stocks');
+
+        // The main div for the stock
+        var stockDiv = document.createElement('div');
+        stockDiv.className = stocksymbol;
+        stockDiv.id = stocksymbol;
+
+        // Header that will list the price and name of stock
+        var header = document.createElement('H4');
+        var headertext = document.createTextNode("The stock price for " + stocksymbol + " is:");
+        header.appendChild(headertext);
+
+        // Making the button to remove the stock from the list
+        var func = "deleteme("+stocksymbol+")";
+        var button = document.createElement('BUTTON');
+        button.innerHTML = 'Remove';
+        button.setAttribute("onclick", func);
+        button.setAttribute("href", "javascript:;");
+
+        // Makes the div that will hold the price
+        var priceDiv = document.createElement('div');
+        priceDiv.className = stocksymbol;
+        priceDiv.id = 'price';
+       
+        //Converts the stock value to float then slices off the two extra decimal places the api provides
+        var floatStockValue = parseFloat(stockValue);
+        floatStockValue = floatStockValue.toFixed(2);
+        priceDiv.innerHTML = '$'.concat(floatStockValue);
+
+
+        // Canvas used for creating the graph
+        var canvas = document.createElement('canvas')
+        canvas.id = stocksymbol.concat('canvas');
+
+        // Appending all newly made html together to the one stock div
+        stockDiv.appendChild(header);
+        stockDiv.appendChild(priceDiv);
+        stockDiv.appendChild(canvas);
+        stockDiv.appendChild(button);
+
+
+        // Appends our new crated html back to the html file
+        masterNode.appendChild(stockDiv);
+
+
+        // Charting is done after we append because canvas doesnt create 2d until
+        // it is on an active html page 
+       
+        var ctx = document.getElementById(canvas.id).getContext('2d');
+        var chart = new Chart(ctx, 
+        {
+            type: 'line',
+
+            // The data for the stock
+            data: 
+            {
+              labels: dates,
+              datasets: [{
+                label: stocksymbol,
+                borderColor: 'rgb(255, 99, 132)',
+                data: closePrices,
+              }]
+            }
+        });
+      }
+      
+      // Deletes the item passed to it
+      function deleteme(id)
+      {
+        id.remove();
+      }
+
+
+
+      </script> 
+  </body>
+</html>
